@@ -1,0 +1,22 @@
+name: NtfyTest
+options:
+  bundleIdPrefix: com.example
+settings:
+  base:
+    PRODUCT_BUNDLE_IDENTIFIER: com.example.ntfytest
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: ""
+    CODE_SIGNING_REQUIRED: "NO"
+    CODE_SIGNING_ALLOWED: "NO"
+    DEVELOPMENT_TEAM: ""
+    INFOPLIST_FILE: Info.plist
+    GENERATE_INFOPLIST_FILE: "NO"
+targets:
+  NtfyTest:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - Sources
