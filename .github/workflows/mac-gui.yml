@@ -1,0 +1,42 @@
+name: mac-gui
+on: workflow_dispatch
+
+jobs:
+  gui:
+    runs-on: macos-15
+    timeout-minutes: 360
+    steps:
+      - name: Create VNC user
+        env:
+          PW: ${{ secrets.VNC_PASSWORD }}
+        run: |
+          sudo dscl . -create /Users/vncuser
+          sudo dscl . -create /Users/vncuser UserShell /bin/zsh
+          sudo dscl . -create /Users/vncuser RealName "VNC User"
+          sudo dscl . -create /Users/vncuser UniqueID 1001
+          sudo dscl . -create /Users/vncuser PrimaryGroupID 20
+          sudo dscl . -create /Users/vncuser NFSHomeDirectory /Users/vncuser
+          sudo dscl . -passwd /Users/vncuser "$PW"
+          sudo dscl . -append /Groups/admin GroupMembership vncuser
+          sudo createhomedir -c -u vncuser
+
+      - name: Enable Screen Sharing
+        run: |
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -activate -configure -access -on \
+            -restart -agent -privs -all -allowAccessFor -allUsers
+          sudo launchctl enable system/com.apple.screensharing
+          sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
+
+      - name: Tunnel port 5900
+        env:
+          NGROK_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+        run: |
+          brew install ngrok
+          ngrok config add-authtoken "$NGROK_TOKEN"
+          ngrok tcp 5900 --log stdout > /tmp/ngrok.log &
+          sleep 8
+          curl -s http://127.0.0.1:4040/api/tunnels
+
+      - name: Hold the session open
+        run: sleep 21600
