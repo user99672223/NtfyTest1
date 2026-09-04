@@ -20,13 +20,16 @@ jobs:
           sudo dscl . -append /Groups/admin GroupMembership vncuser
           sudo createhomedir -c -u vncuser
 
-      - name: Enable Screen Sharing
+           - name: Enable Screen Sharing
         run: |
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
             -activate -configure -access -on \
             -restart -agent -privs -all -allowAccessFor -allUsers
-          sudo launchctl enable system/com.apple.screensharing
-          sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
+          sudo launchctl enable system/com.apple.screensharing || true
+          sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist || true
+          sleep 3
+          echo "--- listening on 5900? ---"
+          sudo lsof -nP -iTCP:5900 -sTCP:LISTEN || echo "NOTHING LISTENING ON 5900"
 
       - name: Tunnel port 5900
         env:
@@ -34,9 +37,10 @@ jobs:
         run: |
           brew install ngrok
           ngrok config add-authtoken "$NGROK_TOKEN"
-          ngrok tcp 5900 --log stdout > /tmp/ngrok.log &
-          sleep 8
-          curl -s http://127.0.0.1:4040/api/tunnels
-
-      - name: Hold the session open
-        run: sleep 21600
+          nohup ngrok tcp 5900 --log stdout > /tmp/ngrok.log 2>&1 &
+          sleep 10
+          if ! curl -sf http://127.0.0.1:4040/api/tunnels; then
+            echo "--- ngrok failed to start ---"
+            cat /tmp/ngrok.log
+            exit 1
+          fi
