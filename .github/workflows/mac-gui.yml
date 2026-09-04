@@ -20,6 +20,23 @@ jobs:
           sudo dscl . -append /Groups/admin GroupMembership vncuser
           sudo createhomedir -c -u vncuser
 
+      - name: Enable auto-login for vncuser
+        env:
+          PW: ${{ secrets.VNC_PASSWORD }}
+        run: |
+          sudo defaults write /Library/Preferences/com.apple.loginwindow autoLoginUser -string vncuser
+          printf '%s' "$PW" | sudo tee /tmp/pw.txt >/dev/null
+          sudo python3 - <<'EOF'
+          key = [0x7D,0x89,0x52,0x23,0xD2,0xBC,0xDD,0xEA,0xA3,0xB9,0x1F]
+          pw = open('/tmp/pw.txt','rb').read()
+          n = max(12, ((len(pw) // 12) + 1) * 12)
+          out = bytes(key[i % len(key)] ^ (pw[i] if i < len(pw) else 0) for i in range(n))
+          open('/etc/kcpassword','wb').write(out)
+          EOF
+          sudo chmod 600 /etc/kcpassword
+          sudo rm -f /tmp/pw.txt
+          echo "auto-login configured"
+
       - name: Enable Screen Sharing
         run: |
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
@@ -30,6 +47,8 @@ jobs:
           sleep 3
           echo "--- listening on 5900? ---"
           sudo lsof -nP -iTCP:5900 -sTCP:LISTEN || echo "NOTHING LISTENING ON 5900"
+          echo "--- current console user ---"
+          stat -f '%Su' /dev/console
 
       - name: Tunnel port 5900
         env:
